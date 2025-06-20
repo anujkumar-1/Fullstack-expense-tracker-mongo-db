@@ -1,5 +1,3 @@
 /node_modules
-/awsCred
 .env
 access.log
-linxkey.pem
