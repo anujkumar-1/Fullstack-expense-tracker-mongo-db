@@ -1,3 +1,7 @@
+
+import dotenv from 'dotenv';
+dotenv.config()
+
 import Expense from "../models/Expense.js";
 import User from "../models/User.js";
 import Income from "../models/Income.js";
