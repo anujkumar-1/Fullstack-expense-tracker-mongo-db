@@ -2,7 +2,8 @@ import { Upload } from '@aws-sdk/lib-storage';
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-
+import dotenv from 'dotenv';
+dotenv.config()
 
 
 export async function generateAndUploadPDF(userDetails, expenses, key) {
