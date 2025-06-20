@@ -1,26 +1,27 @@
-import {DataTypes} from "sequelize"
-import sequelize from '../utils/Database.js';
+import mongoose from 'mongoose';
 
-import User from "./User.js"
+const incomeSchema = new mongoose.Schema({
+  amount: {
+    type: Number,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  category: {
+    type: String,
+    required: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
+}, {
+  timestamps: true
+});
 
-const Income = sequelize.define("income", {
-    amount: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    description:{
-        type: DataTypes.STRING,
-        allowNull: false
+const Income = mongoose.model('Income', incomeSchema);
 
-    },
-    category:{
-        type: DataTypes.STRING,
-        allowNull: false
-    }
-})
-
-
-User.hasMany(Income)
-Income.belongsTo(User)
-
-export default Income
+export default Income;

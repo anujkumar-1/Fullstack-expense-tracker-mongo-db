@@ -9,11 +9,11 @@ import User from "../models/User.js"
         const {amount, description, category} = req.body
         const token = req.header("Authorization")
         console.log("IncomePostReq :",token);
-        const postData = await Income.create({amount:amount, description:description, category: category, userInfoId: req.user.userId})
+        const postData = await Income.create({amount:amount, description:description, category: category, userId: req.user.userId})
         const updatedIncome = Number(req.activeUser.totalIncome) + Number(amount)
-        const updateTotalIncome = await User.update({totalIncome: updatedIncome}, {where:{id: req.user.userId}})
-        
-        
+        console.log(updatedIncome)
+        const updateTotalIncome = await User.updateOne({ _id: req.user.userId },{ $set: { totalIncome: updatedIncome } });
+
         // await t.commit()
         res.status(201).json({data:postData, totalIncome:updatedIncome, updateTotalIncome})
     } catch (error) {

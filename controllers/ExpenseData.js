@@ -1,10 +1,11 @@
-import expenseTable from "../models/Expense.js";
+import Expense from "../models/Expense.js";
 import User from "../models/User.js";
 import Income from "../models/Income.js";
 import s3Urls from "../models/s3Url.js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
+import {generateAndUploadPDF} from "./helper.js"
 
 export const uploadToS3 = async (data, filename) => {
   const IAM_USER_KEY = "AKIAZ3MGM5EXYDYWZIWW";
@@ -41,16 +42,17 @@ export const expensePostData = async (req, res) => {
   try {
     const { amount, description, category } = req.body;
     const token = req.header("Authorization");
-    const response = await expenseTable.create({
+    const response = await Expense.create({
       amount: amount,
       description: description,
       category: category,
-      userInfoId: req.user.userId,
+      userId: req.user.userId,
     });
     const updatedCost = Number(req.activeUser.totalCost) + Number(amount);
-    const updatedTotalCost = await User.update(
-      { totalCost: updatedCost },
-      { where: { id: req.user.userId } }
+    console.log("updatedCost", updatedCost)
+    const updatedTotalCost = await User.updateOne(
+      { _id: req.user.userId },
+      { $set: { totalCost: updatedCost } }
     );
     res
       .status(201)
@@ -112,76 +114,102 @@ export const expenseGetData = async (req, res, next) => {
     }
     console.log(startTime, endTime);
 
-    const response4Expense = await expenseTable.findAll({
-      where: {
-        userInfoId: req.user.userId,
+    const response4Expense = await Expense.find(
+      {
+        userId: req.user.userId,
         createdAt: {
-          [Op.between]: [startTime, endTime],
-        },
+          $gte: new Date(startTime),
+          $lte: new Date(endTime)
+        }
       },
-      attributes: ["id", "amount", "description", "category", "createdAt"],
-      
-      limit: rowsPerPageFrmExpense,
-      offset: (page - 1) * rowsPerPageFrmExpense,
-      order: [["createdAt", "ASC"]],
-    });
+      {
+        amount: 1,
+        description: 1,
+        category: 1,
+        createdAt: 1
+      }
+    )
+    .sort({ createdAt: 1 }) // ASC order
+    .skip((page - 1) * rowsPerPageFrmExpense)
+    .limit(rowsPerPageFrmExpense);
 
-    const response4Income = await Income.findAll({
-      where: {
-        userInfoId: req.user.userId,
+
+    const response4Income = await Income.find(
+      {
+        userId: req.user.userId,  // assuming 'userId' is the field in your MongoDB model
         createdAt: {
-          [Op.between]: [startTime, endTime],
-        },
+          $gte: new Date(startTime),
+          $lte: new Date(endTime)
+        }
       },
-      attributes: ["id", "amount", "description", "category", "createdAt"],
-      
-      limit: rowsPerPageFrmIncome,
-      offset: (page - 1) * rowsPerPageFrmIncome,
-      order: [["createdAt", "ASC"]],
-    });
+      {
+        amount: 1,
+        description: 1,
+        category: 1,
+        createdAt: 1
+      }
+    )
+    .sort({ createdAt: 1 }) // ascending order by createdAt
+    .skip((page - 1) * rowsPerPageFrmIncome)
+    .limit(rowsPerPageFrmIncome);
+
 
     if (
       response4Income.length != rowsPerPageFrmIncome &&
       response4Expense.length == rowsPerPageFrmExpense
     ) {
       const deficitInIncomeData = rowsPerPageFrmIncome - response4Income.length;
-      const defecitedExpenseData4Income = await expenseTable.findAll({
-        where: {
-          userInfoId: req.user.userId,
-          createdAt: {
-            [Op.between]: [startTime, endTime],
-          },
-        },
-        attributes: ["id", "amount", "description", "category", "createdAt"],
-        
-        limit: deficitInIncomeData,
-        offset: (page - 1) * rowsPerPageFrmExpense,
-        order: [["createdAt", "ASC"]],
-      });
+      const defecitedExpenseData4Income = await Expense.find(
+      {
+        userId: req.user.userId, // replace with actual user ID field in your MongoDB schema
+        createdAt: {
+          $gte: new Date(startTime),
+          $lte: new Date(endTime)
+        }
+      },
+      {
+        amount: 1,
+        description: 1,
+        category: 1,
+        createdAt: 1
+      }
+    )
+    .sort({ createdAt: 1 }) // ascending order
+    .skip((page - 1) * rowsPerPageFrmExpense)
+    .limit(deficitInIncomeData);
 
-      arr = [
-        ...response4Expense,
-        ...response4Income,
-        ...defecitedExpenseData4Income,
-      ];
+    arr = [
+      ...response4Expense,
+      ...response4Income,
+      ...defecitedExpenseData4Income,
+    ];
     } else if (
       response4Expense.length != rowsPerPageFrmExpense &&
       response4Income.length == rowsPerPageFrmIncome
     ) {
       const deficitInExpenseData =
         rowsPerPageFrmExpense - response4Expense.length;
-      const defecitedIncomeData4Expense = await Income.findAll({
-        where: {
-          userInfoId: req.user.userId,
-          createdAt: {
-            [Op.between]: [startTime, endTime],
-          },
-        },
-        attributes: ["id", "amount", "description", "category", "createdAt"],
-        limit: deficitInExpenseData,
-        offset: (page - 1) * rowsPerPageFrmIncome,
-        order: [["createdAt", "ASC"]],
-      });
+      
+      const defecitedIncomeData4Expense = await Income.find(
+      {
+        userId: req.user.userId, // Ensure this field matches your schema
+        createdAt: {
+          $gte: new Date(startTime),
+          $lte: new Date(endTime)
+        }
+      },
+      {
+        amount: 1,
+        description: 1,
+        category: 1,
+        createdAt: 1
+      }
+    )
+    .sort({ createdAt: 1 }) // Ascending order by createdAt
+    .skip((page - 1) * rowsPerPageFrmIncome)
+    .limit(deficitInExpenseData);
+      
+
       arr = [
         ...response4Expense,
         ...response4Income,
@@ -193,33 +221,56 @@ export const expenseGetData = async (req, res, next) => {
 
     const sortedArray = sortArr(arr);
 
-    const allExpenseCount = await expenseTable.count({
-      where: {
-        userInfoId: req.user.userId,
-        createdAt: {
-          [Op.between]: [startTime, endTime],
-        },
-      },
+    const allExpenseCount = await Expense.countDocuments({
+      userId: req.user.userId, // Make sure this matches your schema field
+      createdAt: {
+        $gte: new Date(startTime),
+        $lte: new Date(endTime)
+      }
     });
 
-    const allIncomeCount = await Income.count({
-      where: {
-        userInfoId: req.user.userId,
-        createdAt: {
-          [Op.between]: [startTime, endTime],
+    const allIncomeCount = await Income.countDocuments({
+      userId: req.user.userId, // adjust based on your schema
+      createdAt: {
+        $gte: new Date(startTime),
+        $lte: new Date(endTime)
+      }
+    });
+
+    // Total Expense Amount
+    const expenseTotalResult = await Expense.aggregate([
+      {
+        $match: {
+          userId: req.user.userId, // make sure it matches your schema field
         },
       },
-    });
-    const totalAmount = await expenseTable.sum("amount", {
-      where: {
-        userInfoId: req.user.userId,
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$amount" }
+        },
       },
-    });
-    const totalIncome = await Income.sum("amount", {
-      where: {
-        userInfoId: req.user.userId,
+    ]);
+
+    const totalAmount = expenseTotalResult[0]?.totalAmount || 0;
+
+    // Total Income Amount
+    const incomeTotalResult = await Income.aggregate([
+      {
+        $match: {
+          userId: req.user.userId,
+        },
       },
-    });
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: "$amount" }
+        },
+      },
+    ]);
+
+    const totalIncome = incomeTotalResult[0]?.totalIncome || 0;
+
     res.status(200).json({
       allData: sortedArray,
       totalExpense: totalAmount,
@@ -244,34 +295,34 @@ export const downloadExpense = async (req, res) => {
     const uuid = uuidv4();
     if (req.user.ispremiumuser == true) {
       const filename = `Expense-${req.user.name}-${uuid}.txt`;
-      const getAllData = await User.findOne({
-        where: {
-          id: req.user.userId,
-        },
-        attributes: [
-          "username",
-          "email",
-          "ispremiumuser",
-          "totalCost",
-          "totalIncome",
-        ],
+            // Get user info
+      const getAllData = await User.findById(req.user.userId, {
+        username: 1,
+        email: 1,
+        ispremiumuser: 1,
+        totalCost: 1,
+        totalIncome: 1,
       });
-      const getAllExpense = await expenseTable.findAll({
-        where: {
-          userInfoId: req.user.userId,
-        },
-        attributes: ["amount", "description"],
-      });
+
+      // Get all expense entries
+      const getAllExpense = await Expense.find(
+        { userId: req.user.userId },
+        { amount: 1, description: 1, createdAt: 1 }
+      );
+
       const allData = [getAllData, ...getAllExpense];
+
+      console.log("getAllData", getAllData, getAllExpense)
       const stringifiedData = JSON.stringify(allData);
-      const s3Data = await uploadToS3(stringifiedData, filename);
+      const s3Data = await generateAndUploadPDF(getAllData, getAllExpense, "myexpensetrackingapp05", filename)
+      // const s3Data = await uploadToS3(stringifiedData, filename);
 
       const s3Link = await s3Urls.create({
         link: s3Data,
-        userInfoId: req.user.userId,
+        userId: req.user.userId,
       });
       console.log("s3Data", s3Data);
-      res.status(200).json({ data: s3Data });
+      res.status(200).json({ data: s3Data});
     } else {
       res.status(401).json({ message: "Unauthorized" });
     }

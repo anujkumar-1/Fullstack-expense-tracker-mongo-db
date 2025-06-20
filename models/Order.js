@@ -1,23 +1,27 @@
-import {DataTypes} from "sequelize"
-import sequelize from '../utils/Database.js';
+import mongoose from 'mongoose';
 
-import User from "./User.js"
+const orderSchema = new mongoose.Schema({
+  paymentstatus: {
+    type: String,
+    default: 'pending'
+  },
+  orderid: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    default: 'created'
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // reference to User collection
+    required: true
+  }
+}, {
+  timestamps: true
+});
 
-const Order = sequelize.define("order", {
-    id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true
-    },
-    paymentstatus: DataTypes.STRING,
-    orderid: DataTypes.STRING,
-    status: DataTypes.STRING
+const Order = mongoose.model('Order', orderSchema);
 
-})
-
-
-User.hasMany(Order)
-Order.belongsTo(User)
-
-export default Order
+export default Order;

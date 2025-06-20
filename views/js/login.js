@@ -1,6 +1,8 @@
 async function login(event){
     try {
         event.preventDefault();
+        const domainIP = "13.201.129.81";
+        console.log(domainIP)
         const email= event.target.email.value;
         const password= event.target.password.value;
 

@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: false }));
 
 import cors from 'cors';
 
-import sequelize from './utils/Database.js';
+import connectDB from "./utils/Mongodb.js"
 
 import userRoute from './routes/userRoutes.js';
 import awsroute from './routes/AwsRoutes.js';
@@ -48,14 +48,20 @@ app.use(awsroute)
 app.use(deleteRoute)
 
 app.use('/', (req, res) => {
+    console.log("urlll", req)
   res.sendFile(path.join(__dirname, 'views', 'Signup.html'));
 });
 
-sequelize.sync().then(result=>{
-    app.listen(process.env.PORT, ()=>{
-        console.log("Server is running on port 3000")
-    })
-    console.log("database connected sucessfully")
-}).catch(err=>{
-    console.log(err)
-})
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(3000, () => {
+      console.log(`Server running on port 3000`);
+    });
+  } catch (err) {
+    console.error('Failed to connect to DB:', err);
+  }
+};
+
+startServer()

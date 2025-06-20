@@ -17,7 +17,7 @@ export const signUp = async (req, res)=>{
         const password = req.body.password
         const saltrounds = 10
 
-        const userAlreadyExist = await User.findAll({where: {email: email}});
+        const userAlreadyExist = await User.find({ email: email });
         console.log("userAlreadyExist", userAlreadyExist.length)
 
         if(userAlreadyExist.length > 0){
@@ -48,11 +48,7 @@ export const login = async (req, res)=>{
         const email = req.query.verifyEmail
         const password = req.query.verifyPassword
         console.log(email, password)
-        const user = await User.findAll({
-            where: {
-              email: email
-            }
-        });
+        const user = await User.find({email: email});
         console.log(user)
 
         if (user.length > 0) {
@@ -62,8 +58,8 @@ export const login = async (req, res)=>{
                     throw new Error("Something went wrong")
                 }
                 if(result===true){
-                    console.log("user result", user[0].id, user[0].username, user[0].email, user[0].ispremiumuser, user[0].totalCost)
-                    res.status(200).json({user: user, message: "logged in sucessfully", token: generateAccessTokens(user[0].id, user[0].username, user[0].ispremiumuser, user[0].totalCost)});
+                    console.log("user result", user[0]._id, user[0].username, user[0].email, user[0].ispremiumuser, user[0].totalCost)
+                    res.status(200).json({user: user, message: "logged in sucessfully", token: generateAccessTokens(user[0]._id, user[0].username, user[0].ispremiumuser, user[0].totalCost)});
                 }
                 else{
                     res.status(401).json({message: "User not authorized"});

@@ -1,6 +1,7 @@
 async function forgotPassword(event) {
     event.preventDefault();
-    
+    const domainIP = "13.201.129.81";
+    console.log(domainIP)
     const email = event.target.email.value
     const token = localStorage.getItem("token")
     let forgotEmail ={

@@ -1,19 +1,20 @@
-import {DataTypes} from "sequelize"
-import sequelize from '../utils/Database.js';
+import mongoose from 'mongoose';
 
-import User from "./User.js"
+const s3UrlSchema = new mongoose.Schema({
+  link: {
+    type: String,
+    unique: true,
+    required: false
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
+}, {
+  timestamps: true
+});
 
+const S3Url = mongoose.model('S3Url', s3UrlSchema);
 
-const s3Urls = sequelize.define("s3", {
-    link: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        unique: true
-    }
-
-})
-
-User.hasMany(s3Urls)
-s3Urls.belongsTo(User)
-
-export default s3Urls
+export default S3Url;

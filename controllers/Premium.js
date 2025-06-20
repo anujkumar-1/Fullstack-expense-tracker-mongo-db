@@ -2,8 +2,6 @@ import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Razorpay from "razorpay";
 import jwt from 'jsonwebtoken';
-import { Op } from "sequelize";
-
 
 export const buyPremiumGetReq = async (req, res) => {
   try {
@@ -19,7 +17,7 @@ export const buyPremiumGetReq = async (req, res) => {
           throw new Error(JSON.stringify(err));
         }
         console.log(req.user);
-        const data = await Order.create({orderid: order.id, status: "PENDING", userInfoId: req.user.userId});
+        const data = await Order.create({orderid: order.id, status: "PENDING", userId: req.user.userId});
         res.status(201).json({ order, key_id: rzp.key_id, status: "PENDING", data });
       } catch (error) {
         throw new Error(error);
@@ -36,15 +34,23 @@ export const updatePremiumReqSuccess = async function (req, res) {
     console.log(token);
     console.log("req.user", req.user);
     const { order_id, payment_id } = req.body;
-    const response = await Order.findOne({ where: { orderid: order_id } });
-    const promise1 = await response.update({
-      paymentstatus: payment_id,
-      status: "SUCESSFULL"
-      
-    });
-    const promise2 = await User.findOne({ where: { id: req.user.userId } });
-    const promise3 = await promise2.update({ ispremiumuser: true});
-    console.log(promise3.ispremiumuser);
+    const promise1 = await Order.findOneAndUpdate(
+      { orderid: order_id },
+      {
+        paymentstatus: payment_id,
+        status: "SUCESSFULL"
+      },
+      {
+        new: true // returns the updated document
+      }
+    );
+    
+    const promise2 = await User.findByIdAndUpdate(
+      req.user.userId,
+      {ispremiumuser: true},
+      {new: true}
+    );
+    console.log(promise2.ispremiumuser);
     res
       .status(200)
       .json({
@@ -52,13 +58,12 @@ export const updatePremiumReqSuccess = async function (req, res) {
         message: "you are a premium user",
         promise1,
         promise2,
-        promise3,
         token: jwt.sign(
           {
             userId: req.user.userId,
             name: req.user.name,
-            ispremiumuser: promise3.ispremiumuser,
-            totalCost: promise3.totalCost
+            ispremiumuser: promise2.ispremiumuser,
+            totalCost: promise2.totalCost
           },
           process.env.JWT_TOKEN_SECRET
         ),
@@ -71,11 +76,16 @@ export const updatePremiumReqSuccess = async function (req, res) {
 export const updatePremiumReqFailed = async function (req, res) {
   try {
     const { order_id, payment_id } = req.body;
-    const response = await Order.findOne({ where: { orderid: order_id } });
-    const promise1 = await response.update({
-      paymentstatus: payment_id,
-      status: "Failed"
-    });
+    const promise1 = await Order.updateOne(
+      { orderid: order_id },
+      {
+        $set: {
+          paymentstatus: payment_id,
+          status: "Failed"
+        }
+      }
+    );
+
     // t.commit()
     res.status(200).json({ sucess: false, message: "Transaction Failed" });
   } catch (error) {
@@ -86,18 +96,12 @@ export const updatePremiumReqFailed = async function (req, res) {
 
 export const getAllLeaderboardUser = async function (req, res) {
   try {
-    const arrOfAllUsers = await User.findAll({
-      
-      where:{ 
-        totalCost: {
-          [Op.ne]: 0
-        }
+    const arrOfAllUsers = await User.find(
+      { totalCost: { $ne: 0 } },              
+    )
+    .sort({ totalCost: -1 })                   // descending order
+    .limit(30);                                // limit to 30 results
 
-      },
-      attributes: ["id","username", "totalCost"],
-      order: [["totalCost", "DESC"]],
-      limit: 30
-    });
 
     res.status(200).json({ arrOfAllUsers, user: req.user });
   } catch (error) {

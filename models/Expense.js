@@ -1,27 +1,27 @@
-import {DataTypes} from "sequelize"
-import sequelize from '../utils/Database.js';
+import mongoose from 'mongoose';
 
-import User from "./User.js"
+const expenseSchema = new mongoose.Schema({
+  amount: {
+    type: Number,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  category: {
+    type: String,
+    required: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',        // Reference to the User model
+    required: true
+  }
+}, {
+  timestamps: true
+});
 
+const Expense = mongoose.model('Expense', expenseSchema);
 
-const expenseTable = sequelize.define("expense", {
-    amount: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    description:{
-        type: DataTypes.STRING,
-        allowNull: false
-
-    },
-    category:{
-        type: DataTypes.STRING,
-        allowNull: false
-    }
-
-})
-
-User.hasMany(expenseTable)
-expenseTable.belongsTo(User)
-
-export default expenseTable
+export default Expense;

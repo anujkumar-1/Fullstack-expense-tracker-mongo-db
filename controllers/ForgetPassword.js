@@ -127,12 +127,12 @@ export const forgetPasswordReq = async(req, res) =>{
         const email = req.body.email
         console.log(email)
         console.log("req.body", req.user)
-        const user = await User.findOne({where: {email}})
+        const user = await User.findOne({ email });
         console.log(user)
         if(user){
             const id = uuidv4()
             const msg = await sendMail(email, `Reset Password for ${email}`, "Click on the link below", id, req.user.name)
-            const data=await ForgetPassword.create({id: id, userId: req.user.userId, isActive: true, userInfoId: req.user.userId})
+            const data=await ForgetPassword.create({_id: id, userId: req.user.userId, isActive: true, userId: req.user.userId})
             console.log(id)
             res.status(200).json({msg})
 
@@ -151,9 +151,10 @@ export const forgetPasswordReq = async(req, res) =>{
 export const resetPasswordReq = async (req, res) => {
     try {
         const uid = req.params.id
-        const Fpid = await ForgetPassword.findOne({where: {id: uid}})
+        const Fpid = await ForgetPassword.findOne({_id: uid})
         if(Fpid){
-            await Fpid.update({isActive: false})
+            Fpid.isActive = false;
+            await Fpid.save();            
             res.status(200).send(`
                 <!DOCTYPE html>
                 <html lang="en">
@@ -276,13 +277,17 @@ export const updatePasswordReq = async(req, res)=>{
     const saltrounds = 10
     const newPassword = req.query.resetPassword
     const uuid = req.params.resetpasswordid
-    const activeUser = await ForgetPassword.findOne({where: {id: uuid}})
+    const activeUser = await ForgetPassword.findOne({_id: uuid})
     bcrypt.hash(newPassword, saltrounds, async(err, hash)=>{
         if(err){
             throw new Error("Something went wrong")
         }
-        const data = await User.findOne({where:{id: activeUser.userId}})
-        const updatingPassword = await data.update({password: hash})
+        const updatingPassword = await User.findByIdAndUpdate(
+            activeUser.userId,
+            { password: hash },
+            { new: true }
+        );
+
         res.status(200).json({user: data, newPassword: hash, updatingPassword})
     })
 }

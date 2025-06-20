@@ -1,6 +1,8 @@
 async function expenseForm(event) {
     try {
       event.preventDefault();
+      const domainIP = "13.201.129.81";
+      console.log(domainIP)
       const amount = event.target.amount.value;
       const description = event.target.itemDescription.value;
       const category = event.target.category.value;
@@ -308,10 +310,11 @@ async function expenseForm(event) {
   }
 
   async function deleteExpenses(id, category, amount, description){
-    
     const token = localStorage.getItem("token")
     const parsedObj = parseJwt(token)
     const currentUser = parsedObj.userId
+    console.log(id, category, amount, description, token)
+
     const deleteEle = document.getElementById(id)
     console.log(deleteEle.parentElement.parentElement)
     deleteEle.parentElement.parentElement.remove()
@@ -401,12 +404,18 @@ function downloadDataFromS3(){
   document.getElementById("s3DataDownload").style.display = "block"
   const downloadExpense = document.getElementById("s3Button")
 
-  downloadExpense.addEventListener("click", async()=>{
+  downloadExpense.addEventListener("click", async(e)=>{
+        e.preventDefault(); // Prevent default link behavior
     try {
       const getToken = localStorage.getItem("token");
       console.log(getToken)
       const S3response = await axios.get("http://localhost:3000/downloadS3Data", { headers: { Authorization: getToken }});
-      
+      if(S3response.status === 200){
+        window.location.href = S3response.data.data
+
+        console.log(S3response.data.data)
+
+      }
 
     } catch (error) {
       console.log(error)
