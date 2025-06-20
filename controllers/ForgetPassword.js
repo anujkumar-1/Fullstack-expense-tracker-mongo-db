@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   secure: true, // Use `true` for port 465, `false` for all other ports
   auth: {
     user: "jesuoor@gmail.com",
-    pass: "owxwvlcayisnlmyn",
+    pass: process.env.NODEMAILER_GMAIL_PASSKEY,
   },
   
 });
@@ -288,6 +288,6 @@ export const updatePasswordReq = async(req, res)=>{
             { new: true }
         );
 
-        res.status(200).json({user: data, newPassword: hash, updatingPassword})
+        res.status(200).json({newPassword: hash, updatingPassword})
     })
 }

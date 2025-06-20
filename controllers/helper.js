@@ -5,9 +5,10 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 
 
-export async function generateAndUploadPDF(userDetails, expenses, bucketName, key) {
-    const IAM_USER_KEY = "AKIAZ3MGM5EXYDYWZIWW";
-    const IAM_USER_SECRET = "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";
+export async function generateAndUploadPDF(userDetails, expenses, key) {
+    const IAM_USER_KEY = process.env.AWS_S3_ACCESS_KEY;
+    const IAM_USER_SECRET = process.env.AWS_S3_SECRET_KEY;
+    const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 
     const s3Client = new S3Client({
         region: "us-east-1",
@@ -34,7 +35,7 @@ export async function generateAndUploadPDF(userDetails, expenses, bucketName, ke
         const upload = new Upload({
             client: s3Client,
             params: {
-              Bucket: bucketName,
+              Bucket: BUCKET_NAME,
               Key: key,
               Body: passThrough,
               ContentType: 'application/pdf',
